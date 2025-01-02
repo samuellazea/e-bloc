@@ -23,11 +23,45 @@ Integrarea **E-bloc.ro** permite utilizatorilor să afișeze și să monitorizez
   - `Luna afișată` – Luna curentă afișată în interfață.
   - `Nivel restanță` – Gradul acumulării datoriilor.
 
-### 📊 **Senzor Index Contor (`Index contor`)**
-- Afișează informațiile despre consumul de utilități.
+### 📊 **Senzor Index_contor_Apa_Rece (`Index_contor_Apa_Rece`)**
+- Afișează informațiile despre consumul de utilități. 
+- *** Senzorul citeste automat luna actuala si verifica ultima luna in care sunt citiri. Datele sunt luate numai din ultima in care s-au incheiat citirile complete
 - **Atribute disponibile:**
   - `Index vechi` – Indexul precedent (în mc).
   - `Index nou` – Indexul curent (în mc).
+  - `Consum` – Consum luna curenta (în mc).
+  - `Luna afisata` – Luna in care e citit indexul (An-Luna).
+  - `Unitate masurare` – Unitatea de masurare (in mc).
+
+### 📊 **Senzor Index_contor_Apa_Calda (`Index_contor_Apa_Calda`)**
+- Afișează informațiile despre consumul de utilități. 
+- *** Senzorul citeste automat luna actuala si verifica ultima luna in care sunt citiri. Datele sunt luate numai din ultima in care s-au incheiat citirile complete
+- **Atribute disponibile:**
+  - `Index vechi` – Indexul precedent (în mc).
+  - `Index nou` – Indexul curent (în mc).
+  - `Consum` – Consum luna curenta (în mc).
+  - `Luna afisata` – Luna in care e citit indexul (An-Luna).
+  - `Unitate masurare` – Unitatea de masurare (in mc).
+
+### 📊 **Senzor Index_contor_Caldura (`Index_contor_Caldura`)**
+- Afișează informațiile despre consumul de utilități. 
+- *** Senzorul citeste automat luna actuala si verifica ultima luna in care sunt citiri. Datele sunt luate numai din ultima in care s-au incheiat citirile complete
+- **Atribute disponibile:**
+  - `Index vechi` – Indexul precedent (în kWh).
+  - `Index nou` – Indexul curent (în kWh).
+  - `Consum` – Consum luna curenta (în kWh).
+  - `Luna afisata` – Luna in care e citit indexul (An-Luna).
+  - `Unitate masurare` – Unitatea de masurare (in kWh).
+
+### 📊 **Senzor Index_contor_Curenta (`Index_contor_Curent`)**
+- Afișează informațiile despre consumul de utilități. 
+- *** Senzorul citeste automat luna actuala si verifica ultima luna in care sunt citiri. Datele sunt luate numai din ultima in care s-au incheiat citirile complete
+- **Atribute disponibile:**
+  - `Index vechi` – Indexul precedent (în kWh).
+  - `Index nou` – Indexul curent (în kWh).
+  - `Consum` – Consum luna curenta (în kWh).
+  - `Luna afisata` – Luna in care e citit indexul (An-Luna).
+  - `Unitate masurare` – Unitatea de masurare (in kWh).
 
 ### 💳 **Senzor Plăți și Chitanțe (`Plăți și chitanțe`)**
 - Afișează informațiile despre plățile efectuate.
