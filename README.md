@@ -1,3 +1,5 @@
+![ebloc](https://github.com/user-attachments/assets/cf86528b-b474-4d4a-a068-f539d2c7d7fb)
+
 # 🏠 Integrarea E-bloc.ro pentru Home Assistant
 
 Integrarea **E-bloc.ro** permite utilizatorilor să afișeze și să monitorizeze informații despre apartamentul lor direct din platforma [E-bloc.ro](https://www.e-bloc.ro) în Home Assistant. Aceasta oferă senzori pentru detalii despre client, indexurile de consum și plățile efectuate.
