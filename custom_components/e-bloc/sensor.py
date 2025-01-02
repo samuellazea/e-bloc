@@ -1,5 +1,4 @@
 import logging
-import aiofiles
 from datetime import datetime, timedelta
 from dateutil.relativedelta import relativedelta
 from aiohttp import ClientSession
@@ -23,13 +22,9 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 SCAN_INTERVAL = timedelta(minutes=5)
-luna_afisata = None
 
 class EBlocDataUpdateCoordinator(DataUpdateCoordinator):
-    """Coordonator pentru actualizarea datelor în integrarea E-bloc."""
-
     def __init__(self, hass, config):
-        """Inițializare coordonator."""
         super().__init__(
             hass,
             _LOGGER,
@@ -40,51 +35,52 @@ class EBlocDataUpdateCoordinator(DataUpdateCoordinator):
         self.config = config
         self.session = None
         self.authenticated = False
-
+    
+    def _get_luna_activa(self, lista_luni):
+        _LOGGER.debug("Get_luna_activa lista_luni: %s", lista_luni)
+        first_three_months = {k: lista_luni[k] for k in list(lista_luni.keys())[:3]}
+        _LOGGER.debug("Get_luna_activa first_three_months: %s", first_three_months)        
+        luna_activa = next((v['luna'] for k, v in first_three_months.items() if v['open'] == '0'), None)
+        _LOGGER.debug("Get_luna_activa luna_activa: %s", luna_activa)                
+        return luna_activa if luna_activa else list(first_three_months.values())[0]['luna']
+    
     async def _async_update_data(self):
-        """Actualizează datele pentru toate componentele."""
         try:
             if not self.session:
                 self.session = ClientSession()
             if not self.authenticated:
                 await self._authenticate()
 
-            today = datetime.now()
-            # Calculate the first day of the current month
-            first_day_of_current_month = today.replace(day=1)
-
-            # Calculate the last day of the previous month by subtracting one day from the first day of the current month
-            #last_day_of_previous_month = first_day_of_current_month -  timedelta(days=1)
-            last_day_of_previous_month = first_day_of_current_month -  relativedelta(months=2)
-
-            # Get the previous month and year
-            previous_year = last_day_of_previous_month.year
-            previous_month = last_day_of_previous_month.month
+            initial_payload = {
+                "pIdAsoc": self.config["pIdAsoc"],
+                "pIdAp": self.config["pIdAp"]
+            }
             
-            # return {
-            #     "home": await self._fetch_data(URL_HOME, {"pIdAsoc": self.config["pIdAsoc"], "pIdAp": self.config["pIdAp"]}),
-            #     "index": await self._fetch_data(URL_INDEX, {"pIdAsoc": self.config["pIdAsoc"], "pLuna": "2024-12", "pIdAp": self.config["pIdAp"]}),
-            #     "receipts": await self._fetch_data(URL_RECEIPTS, {"pIdAsoc": self.config["pIdAsoc"], "pIdAp": self.config["pIdAp"]}),
-            # }            
+            lista_luni = await self._fetch_data(URL_LISTA_LUNI, initial_payload)
+            _LOGGER.debug("_async_update_data lista_luni: %s", lista_luni)                
+        
+            luna_activa = self._get_luna_activa(lista_luni)
+            _LOGGER.debug("_async_update_data lista_luni: %s", luna_activa)                
 
             payload = {
                 "pIdAsoc": self.config["pIdAsoc"],
                 "pIdAp": self.config["pIdAp"],
-                "pLuna": f"{previous_year}-{previous_month:02d}"
+                "pLuna": luna_activa
             }
-            _LOGGER.debug("Payload for data fetch: %s", payload)
+
+            _LOGGER.debug("Using payload with luna_activa: %s", payload)
 
             return {
                 "home": await self._fetch_data(URL_HOME, payload),
                 "index": await self._fetch_data(URL_INDEX, payload),
                 "receipts": await self._fetch_data(URL_RECEIPTS, payload),
-                "lista_luni": await self._fetch_data(URL_LISTA_LUNI, payload),                
+                "lista_luni": lista_luni,
+                "luna_activa": luna_activa
             }
         except Exception as e:
             raise UpdateFailed(f"Eroare la actualizarea datelor: {e}")
 
     async def _authenticate(self):
-        """Autentificare pe server."""
         payload = {"pUser": self.config["pUser"], "pPass": self.config["pPass"]}
         try:
             async with self.session.post(URL_LOGIN, data=payload, headers=HEADERS_LOGIN) as response:
@@ -97,7 +93,6 @@ class EBlocDataUpdateCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Eroare la autentificare: {e}")
 
     async def _fetch_data(self, url, payload):
-        """Execută cererea POST și returnează răspunsul JSON."""
         try:
             async with self.session.post(url, data=payload, headers=HEADERS_POST) as response:
                 if response.status == 200:
@@ -109,9 +104,7 @@ class EBlocDataUpdateCoordinator(DataUpdateCoordinator):
             _LOGGER.error("Eroare la conexiunea cu serverul: %s", e)
             return {}
 
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities):
-    """Setăm senzorii pentru integrarea E-bloc."""
     coordinator = EBlocDataUpdateCoordinator(hass, entry.data)
     await coordinator.async_config_entry_first_refresh()
 
@@ -125,10 +118,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_e
     ]
     async_add_entities(sensors, update_before_add=True)
 
-
 class EBlocSensorBase(SensorEntity):
-    """Clasă de bază pentru senzorii E-bloc."""
-
     def __init__(self, coordinator, name):
         self._coordinator = coordinator
         self._attr_name = name
@@ -136,26 +126,16 @@ class EBlocSensorBase(SensorEntity):
         self._attr_extra_state_attributes = {}
 
     async def async_update(self):
-        """Actualizează datele pentru senzor."""
         await self._coordinator.async_request_refresh()
 
-
 class EBlocHomeSensor(EBlocSensorBase):
-    """Senzor pentru `AjaxGetHomeApInfo.php`."""
-
     def __init__(self, coordinator):
         super().__init__(coordinator, "Date client")
 
     async def async_update(self):
-        """Actualizează datele pentru senzorul `home`."""
         data = self._coordinator.data.get("home", {}).get("1", {})
         
-        # Update the global variable luna_afisata
-        global luna_afisata
-        luna_afisata = data.get("luna_afisata", "Necunoscut")
-
-        # Log the updated luna_afisata
-        _LOGGER.debug("Updated luna_afisata: %s", luna_afisata)
+        luna_activa = self._coordinator.data.get("luna_activa")
         
         self._attr_state = data.get("cod_client", "Necunoscut")
         self._attr_extra_state_attributes = {
@@ -172,34 +152,27 @@ class EBlocHomeSensor(EBlocSensorBase):
             "Începere citire contoare": data.get("citire_contoare_start", "Necunoscut"),
             "Încheiere citire contoare": data.get("citire_contoare_end", "Necunoscut"),
             "Luna cu datoria cea mai veche": data.get("luna_veche", "Necunoscut"),
-            "Luna afișată": data.get("luna_afisata", "Necunoscut"),
+            "Luna afișată": luna_activa,
             "Nivel restanță": data.get("nivel_restanta", "Necunoscut"),
         }
 
     @property
-    def unique_id(self):
-        return f"{DOMAIN}_client"
-
+    def unique_id(self): return f"{DOMAIN}_client"
+    
     @property
-    def name(self):
-        return self._attr_name
-
+    def name(self): return self._attr_name
+    
     @property
-    def state(self):
-        return self._attr_state
-
+    def state(self): return self._attr_state
+    
     @property
-    def extra_state_attributes(self):
-        return self._attr_extra_state_attributes
-
+    def extra_state_attributes(self): return self._attr_extra_state_attributes
+    
     @property
-    def icon(self):
-        """Pictograma senzorului."""
-        return "mdi:account-file"
-
+    def icon(self): return "mdi:account-file"
+    
     @property
     def device_info(self):
-        """Returnează informațiile dispozitivului."""
         return {
             "identifiers": {(DOMAIN, "home")},
             "name": "Interfață UI pentru E-bloc.ro",
@@ -209,36 +182,13 @@ class EBlocHomeSensor(EBlocSensorBase):
         }
 
 class EBlocContoareSensorApaRece(EBlocSensorBase):
-    """Senzor pentru `AjaxGetIndexContoare.php`."""
-
     def __init__(self, coordinator):
-        super().__init__(coordinator, "Index contor Apa Rece")
-        self.luna_activa = None
+        super().__init__(coordinator, "Index_contor_Apa_Rece")
 
     async def async_update(self):
-        """Actualizează datele pentru senzorul `index`."""
-        # Log the entire coordinator data
-        _LOGGER.debug("Full coordinator data: %s", self._coordinator.data)
-        
         data = self._coordinator.data.get("index", {}).get("2", {})
-        data_luni_toate = self._coordinator.data.get("lista_luni", {})
-        data_luni = {k: data_luni_toate[k] for k in list(data_luni_toate.keys())[:3]}
-
-        # Log the retrieved data for this specific sensor
-        _LOGGER.debug("Fetched data for Index contor Apa Rece: %s", data)
-        _LOGGER.debug("Fetched data_luni_toate: %s", data_luni_toate)
-        _LOGGER.debug("Fetched data_luni: %s", data_luni)
-        # Get the first index where 'open' is '0'
-        luna_activa = next((v['luna'] for k, v in data_luni.items() if v['open'] == '0'), None)
-        # Store luna_activa as an instance variable
-        self.luna_activa = luna_activa
-
-        # Log the result (optional)
-        _LOGGER.debug(f"pLuna set to: {luna_activa}")
-
-
-
-
+        luna_activa = self._coordinator.data.get("luna_activa")
+        
         index_vechi = data.get("index_vechi", "").strip()
         index_nou = data.get("index_nou", "").strip()
 
@@ -252,64 +202,50 @@ class EBlocContoareSensorApaRece(EBlocSensorBase):
         except ValueError:
             index_nou = "Necunoscut"
 
-        # Setăm starea senzorului pentru `index_nou`
-        self._attr_state = (
-            f"{index_nou}" if index_nou != "Necunoscut" else "Necunoscut"
-        )
-
-        # Atribute suplimentare
+        consum = (float(index_nou) - float(index_vechi)) if index_nou != "Necunoscut" and index_vechi != "Necunoscut" else "Necunoscut"
+        self._attr_state = f"{index_nou}" if index_nou != "Necunoscut" else "Necunoscut"
         self._attr_extra_state_attributes = {
-            "Index vechi": f"{index_vechi}"
-            if index_vechi != "Necunoscut"
-            else "Necunoscut",
-            "Index nou": f"{index_nou}"
-            if index_nou != "Necunoscut"
-            else "",
-            "Luna afisata": luna_afisata
-            if luna_afisata != "Necunoscut"
-            else "Necunoscut",
+            "Index vechi": f"{index_vechi}" if index_vechi != "Necunoscut" else "Necunoscut",
+            "Index nou": f"{index_nou}" if index_nou != "Necunoscut" else "",
+            "Consum": f"{consum:.3f}" if consum != "Necunoscut" else "Necunoscut",
+            "Luna afisata": luna_activa  if luna_activa  != "Necunoscut" else "Necunoscut",
             "Unitate masurare": "mc",
         }
-
+        
     @property
-    def unique_id(self):
-        return f"{DOMAIN}_contor_apa_rece"
-
+    def unique_id(self): return f"{DOMAIN}_contor_apa_rece"
+    
     @property
-    def name(self):
-        return self._attr_name
-
+    def name(self): return self._attr_name
+    
     @property
-    def state(self):
-        return self._attr_state
-
+    def state(self): return self._attr_state
+    
     @property
-    def extra_state_attributes(self):
-        return self._attr_extra_state_attributes
-
+    def extra_state_attributes(self): return self._attr_extra_state_attributes
+    
     @property
-    def icon(self):
-        """Pictograma senzorului."""
-        return "mdi:counter"
-
+    def icon(self): return "mdi:counter"
+    
     @property
     def device_info(self):
-        """Returnează informațiile dispozitivului."""
         return {
             "identifiers": {(DOMAIN, "home")},
             "name": "Interfață UI pentru E-bloc.ro",
             "manufacturer": "E-bloc.ro",
             "model": "Interfață UI pentru E-bloc.ro",
             "entry_type": DeviceEntryType.SERVICE,
-        }
+        }        
 
 class EBlocContoareSensorApaCalda(EBlocSensorBase):
-    """Senzor pentru `AjaxGetIndexContoare.php`."""
-
     def __init__(self, coordinator):
-        super().__init__(coordinator, "Index contor Apa Calda")
-
+        super().__init__(coordinator, "Index_contor_Apa_Calda")
+        
+    async def async_update(self):
         data = self._coordinator.data.get("index", {}).get("3", {})
+        
+        luna_activa = self._coordinator.data.get("luna_activa")
+
         index_vechi = data.get("index_vechi", "").strip()
         index_nou = data.get("index_nou", "").strip()
 
@@ -323,49 +259,33 @@ class EBlocContoareSensorApaCalda(EBlocSensorBase):
         except ValueError:
             index_nou = "Necunoscut"
 
-        # Setăm starea senzorului pentru `index_nou`
-        self._attr_state = (
-            f"{index_nou}" if index_nou != "Necunoscut" else "Necunoscut"
-        )
-
-        # Atribute suplimentare
+        consum = (float(index_nou) - float(index_vechi)) if index_nou != "Necunoscut" and index_vechi != "Necunoscut" else "Necunoscut"
+        self._attr_state = f"{index_nou}" if index_nou != "Necunoscut" else "Necunoscut"
         self._attr_extra_state_attributes = {
-            "Index vechi": f"{index_vechi}"
-            if index_vechi != "Necunoscut"
-            else "Necunoscut",
-            "Index nou": f"{index_nou}"
-            if index_nou != "Necunoscut"
-            else "",
-            "Luna afisata": luna_afisata
-            if luna_afisata != "Necunoscut"
-            else "Necunoscut",            
+            "Index vechi": f"{index_vechi}" if index_vechi != "Necunoscut" else "Necunoscut",
+            "Index nou": f"{index_nou}" if index_nou != "Necunoscut" else "",
+            "Consum": f"{consum:.3f}" if consum != "Necunoscut" else "Necunoscut",            
+            "Luna afisata": luna_activa if luna_activa != "Necunoscut" else "Necunoscut",            
             "Unitate masurare": "mc",
         }
         
     @property
-    def unique_id(self):
-        return f"{DOMAIN}_contor_apa_calda"
-
+    def unique_id(self): return f"{DOMAIN}_contor_apa_calda"
+    
     @property
-    def name(self):
-        return self._attr_name
-
+    def name(self): return self._attr_name
+    
     @property
-    def state(self):
-        return self._attr_state
-
+    def state(self): return self._attr_state
+    
     @property
-    def extra_state_attributes(self):
-        return self._attr_extra_state_attributes
-
+    def extra_state_attributes(self): return self._attr_extra_state_attributes
+    
     @property
-    def icon(self):
-        """Pictograma senzorului."""
-        return "mdi:counter"
-
+    def icon(self): return "mdi:counter"
+    
     @property
     def device_info(self):
-        """Returnează informațiile dispozitivului."""
         return {
             "identifiers": {(DOMAIN, "home")},
             "name": "Interfață UI pentru E-bloc.ro",
@@ -378,9 +298,12 @@ class EBlocContoareSensorCaldura(EBlocSensorBase):
     """Senzor pentru `AjaxGetIndexContoare.php`."""
 
     def __init__(self, coordinator):
-        super().__init__(coordinator, "Index contor Caldura")
-
+        super().__init__(coordinator, "Index_contor_Caldura")
+        
+    async def async_update(self):
         data = self._coordinator.data.get("index", {}).get("4", {})
+        
+        luna_activa = self._coordinator.data.get("luna_activa")
         index_vechi = data.get("index_vechi", "").strip()
         index_nou = data.get("index_nou", "").strip()
 
@@ -394,23 +317,14 @@ class EBlocContoareSensorCaldura(EBlocSensorBase):
         except ValueError:
             index_nou = "Necunoscut"
 
-        # Setăm starea senzorului pentru `index_nou`
-        self._attr_state = (
-            f"{index_nou}" if index_nou != "Necunoscut" else "Necunoscut"
-        )
-
-        # Atribute suplimentare
+        consum = (float(index_nou) - float(index_vechi)) if index_nou != "Necunoscut" and index_vechi != "Necunoscut" else "Necunoscut"
+        self._attr_state = f"{index_nou}" if index_nou != "Necunoscut" else "Necunoscut"       
         self._attr_extra_state_attributes = {
-            "Index vechi": f"{index_vechi}"
-            if index_vechi != "Necunoscut"
-            else "Necunoscut",
-            "Index nou": f"{index_nou}"
-            if index_nou != "Necunoscut"
-            else "",
-            "Luna afisata": luna_afisata
-            if luna_afisata != "Necunoscut"
-            else "Necunoscut",            
-            "Unitate masurare": "mc",
+            "Index vechi": f"{index_vechi}" if index_vechi != "Necunoscut" else "Necunoscut",
+            "Index nou": f"{index_nou}" if index_nou != "Necunoscut" else "",
+            "Consum": f"{consum:.3f}" if consum != "Necunoscut" else "Necunoscut",            
+            "Luna afisata": luna_activa if luna_activa != "Necunoscut" else "Necunoscut",            
+            "Unitate masurare": "kWh",
         }
         
     @property
@@ -449,9 +363,12 @@ class EBlocContoareSensorCurent(EBlocSensorBase):
     """Senzor pentru `AjaxGetIndexContoare.php`."""
 
     def __init__(self, coordinator):
-        super().__init__(coordinator, "Index contor Curent")
+        super().__init__(coordinator, "Index_contor_Curent")
 
+    async def async_update(self):
         data = self._coordinator.data.get("index", {}).get("5", {})
+        
+        luna_activa = self._coordinator.data.get("luna_activa")        
         index_vechi = data.get("index_vechi", "").strip()
         index_nou = data.get("index_nou", "").strip()
 
@@ -470,17 +387,13 @@ class EBlocContoareSensorCurent(EBlocSensorBase):
             f"{index_nou}" if index_nou != "Necunoscut" else "Necunoscut"
         )
 
-        # Atribute suplimentare
+        consum = (float(index_nou) - float(index_vechi)) if index_nou != "Necunoscut" and index_vechi != "Necunoscut" else "Necunoscut"
+        self._attr_state = f"{index_nou}" if index_nou != "Necunoscut" else "Necunoscut"        
         self._attr_extra_state_attributes = {
-            "Index vechi": f"{index_vechi}"
-            if index_vechi != "Necunoscut"
-            else "Necunoscut",
-            "Index nou": f"{index_nou}"
-            if index_nou != "Necunoscut"
-            else "",
-            "Luna afisata": luna_afisata
-            if luna_afisata != "Necunoscut"
-            else "Necunoscut",
+            "Index vechi": f"{index_vechi}" if index_vechi != "Necunoscut" else "Necunoscut",
+            "Index nou": f"{index_nou}" if index_nou != "Necunoscut" else "",
+            "Consum": f"{consum:.3f}" if consum != "Necunoscut" else "Necunoscut",            
+            "Luna afisata": luna_activa if luna_activa != "Necunoscut" else "Necunoscut",            
             "Unitate masurare": "kWh",
         }
         
