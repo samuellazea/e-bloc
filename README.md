@@ -24,8 +24,9 @@ Integrarea **E-bloc.ro** permite utilizatorilor să afișeze și să monitorizez
   - `Nivel restanță` – Gradul acumulării datoriilor.
 
 ### 📊 **Senzor Index_contor_Apa_Rece (`Index_contor_Apa_Rece`)**
-- Afișează informațiile despre consumul de utilități. 
+- Afișează informațiile despre consumul de Apa Rece. 
 - *** Senzorul citeste automat luna actuala si verifica ultima luna in care sunt citiri. Datele sunt luate numai din ultima in care s-au incheiat citirile complete
+- State este indexul nou
 - **Atribute disponibile:**
   - `Index vechi` – Indexul precedent (în mc).
   - `Index nou` – Indexul curent (în mc).
@@ -34,8 +35,9 @@ Integrarea **E-bloc.ro** permite utilizatorilor să afișeze și să monitorizez
   - `Unitate masurare` – Unitatea de masurare (in mc).
 
 ### 📊 **Senzor Index_contor_Apa_Calda (`Index_contor_Apa_Calda`)**
-- Afișează informațiile despre consumul de utilități. 
+- Afișează informațiile despre consumul de Apa Calda. 
 - *** Senzorul citeste automat luna actuala si verifica ultima luna in care sunt citiri. Datele sunt luate numai din ultima in care s-au incheiat citirile complete
+- State este indexul nou
 - **Atribute disponibile:**
   - `Index vechi` – Indexul precedent (în mc).
   - `Index nou` – Indexul curent (în mc).
@@ -44,8 +46,9 @@ Integrarea **E-bloc.ro** permite utilizatorilor să afișeze și să monitorizez
   - `Unitate masurare` – Unitatea de masurare (in mc).
 
 ### 📊 **Senzor Index_contor_Caldura (`Index_contor_Caldura`)**
-- Afișează informațiile despre consumul de utilități. 
+- Afișează informațiile despre consumul de Caldura. 
 - *** Senzorul citeste automat luna actuala si verifica ultima luna in care sunt citiri. Datele sunt luate numai din ultima in care s-au incheiat citirile complete
+- State este indexul nou
 - **Atribute disponibile:**
   - `Index vechi` – Indexul precedent (în kWh).
   - `Index nou` – Indexul curent (în kWh).
@@ -54,8 +57,9 @@ Integrarea **E-bloc.ro** permite utilizatorilor să afișeze și să monitorizez
   - `Unitate masurare` – Unitatea de masurare (in kWh).
 
 ### 📊 **Senzor Index_contor_Curenta (`Index_contor_Curent`)**
-- Afișează informațiile despre consumul de utilități. 
+- Afișează informațiile despre consumul de Curent. 
 - *** Senzorul citeste automat luna actuala si verifica ultima luna in care sunt citiri. Datele sunt luate numai din ultima in care s-au incheiat citirile complete
+- State este indexul nou
 - **Atribute disponibile:**
   - `Index vechi` – Indexul precedent (în kWh).
   - `Index nou` – Indexul curent (în kWh).
@@ -115,10 +119,40 @@ Ultima zi de plată: 2025-01-12
 Contor trimis: Nu
 ```
 
-**Index Contor:**
+**Index Contor Apa Rece:**
 ```yaml
-Index vechi: 169 mc
-Index nou: 172 mc
+Index vechi: 79.344
+Index nou: 80.258
+Consum: 0.914
+Luna afisata: 2024-11
+Unitate masurare: mc
+```
+
+**Index Contor Apa Calda:**
+```yaml
+Index vechi: 79.344
+Index nou: 80.258
+Consum: 0.914
+Luna afisata: 2024-11
+Unitate masurare: mc
+```
+
+**Index Contor Caldura:**
+```yaml
+Index vechi: 79.344
+Index nou: 80.258
+Consum: 0.914
+Luna afisata: 2024-11
+Unitate masurare: kWh
+```
+
+**Index Contor Curent:**
+```yaml
+Index vechi: 79.344
+Index nou: 80.258
+Consum: 0.914
+Luna afisata: 2024-11
+Unitate masurare: kWh
 ```
 
 **Plăți și Chitanțe:**
