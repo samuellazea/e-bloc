@@ -17,6 +17,7 @@ from .const import (
     URL_HOME,
     URL_INDEX,
     URL_RECEIPTS,
+    URL_LISTA_LUNI,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -77,6 +78,7 @@ class EBlocDataUpdateCoordinator(DataUpdateCoordinator):
                 "home": await self._fetch_data(URL_HOME, payload),
                 "index": await self._fetch_data(URL_INDEX, payload),
                 "receipts": await self._fetch_data(URL_RECEIPTS, payload),
+                "lista_luni": await self._fetch_data(URL_LISTA_LUNI, payload),                
             }
         except Exception as e:
             raise UpdateFailed(f"Eroare la actualizarea datelor: {e}")
@@ -211,18 +213,32 @@ class EBlocContoareSensorApaRece(EBlocSensorBase):
 
     def __init__(self, coordinator):
         super().__init__(coordinator, "Index contor Apa Rece")
+        self.luna_activa = None
 
     async def async_update(self):
-        
+        """Actualizează datele pentru senzorul `index`."""
         # Log the entire coordinator data
         _LOGGER.debug("Full coordinator data: %s", self._coordinator.data)
         
-        """Actualizează datele pentru senzorul `index`."""
         data = self._coordinator.data.get("index", {}).get("2", {})
-        
+        data_luni_toate = self._coordinator.data.get("lista_luni", {})
+        data_luni = {k: data_luni_toate[k] for k in list(data_luni_toate.keys())[:3]}
+
         # Log the retrieved data for this specific sensor
         _LOGGER.debug("Fetched data for Index contor Apa Rece: %s", data)
-        
+        _LOGGER.debug("Fetched data_luni_toate: %s", data_luni_toate)
+        _LOGGER.debug("Fetched data_luni: %s", data_luni)
+        # Get the first index where 'open' is '0'
+        luna_activa = next((v['luna'] for k, v in data_luni.items() if v['open'] == '0'), None)
+        # Store luna_activa as an instance variable
+        self.luna_activa = luna_activa
+
+        # Log the result (optional)
+        _LOGGER.debug(f"pLuna set to: {luna_activa}")
+
+
+
+
         index_vechi = data.get("index_vechi", "").strip()
         index_nou = data.get("index_nou", "").strip()
 

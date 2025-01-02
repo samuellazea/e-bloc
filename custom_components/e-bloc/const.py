@@ -5,6 +5,7 @@ URL_LOGIN = "https://www.e-bloc.ro/index.php"
 URL_HOME = "https://www.e-bloc.ro/ajax/AjaxGetHomeApInfo.php"
 URL_INDEX = "https://www.e-bloc.ro/ajax/AjaxGetIndexContoare.php"
 URL_RECEIPTS = "https://www.e-bloc.ro/ajax/AjaxGetPlatiChitanteToti.php"
+URL_LISTA_LUNI = "https://www.e-bloc.ro/ajax/AjaxGetIndexLuni.php"
 
 # Payload-uri implicite pentru autentificare și cereri POST
 DEFAULT_USER = ""
